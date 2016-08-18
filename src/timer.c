@@ -19,81 +19,113 @@ void timerInit(void)
 /*
     timeout: 10ms unit.
 */
-void timerCreate(uint8 timer_id, uint8 timeout, timerHandler handler)
+void timerCreate(timer_id_type id, uint8 interval, timerHandler handler)
 {
     uint8 i;
 
-    if(timer_id >= TIMER_ID_NUM)
+    // 1, check the input parameters.
+    if(id >= TIMER_ID_NUM)
     {
-        DBG_STR_DATA("timer id is fault:", timer_id);
+        DBG_STR_DATA("timerCreate: id is fault:", id);
         return ;
     }
 
     if(NULL == handler)
     {
-        DBG_STR_DATA("timer handler is null:", timer_id);
+        DBG_STR_DATA("timerCreate: handler is null:", id);
         return;
     }
 
+    // 2,check if this timer ID is already in the timer queque
     for(i = 0; i < TIMER_ID_NUM; i++)
     {
-        if(timer_id == timerQueque[i].id)
+        if(id == timerQueque[i].id)
         {
-            DBG_STR_DATA("timer already is created:", timer_id);
+            DBG_STR_DATA("timerCreate: already is created:", id);
             return ;
         }
     }
-    
+
+    // 3, find the empty position and fill in it    
     for(i = 0; i < TIMER_ID_NUM; i++)
     {
-        if(TIMER_ID_NUM == timerQueque[i].id)
+        if(TIMER_ID_NONE == timerQueque[i].id)
         {
-            timerQueque[i].id = timer_id;
-            timerQueque[i].time = 0;
-            timerQueque[i].timeout = timeout;
+            timerQueque[i].id = id;
+            timerQueque[i].count = 0;
+            timerQueque[i].interval = interval;
             timerQueque[i].handler = handler;
             return ;
         }
     }
     
-    DBG_STR_DATA("timer queque is full:", timer_id);
+    DBG_STR_DATA("timerCreate: queque is full:", id);
 }
 
-void timerDelete(uint8 timer_id)
+void timerDelete(const timer_id_type id)
 {
     uint8 i, next;
+    uint8 found = FALSE;
 
+    // 1, check the input parameters
+    if(id >= TimerMax)
+    {
+        DBG_STR_DATA("timerDelete: id is fault:" id);
+    }
+
+    // 2, find the specific position
     for(i = 0; i < TIMER_ID_NUM; i++)
     {
-        if(timerQueque[i].id == timer_id)
+        if(id == timerQueque[i].id)
         {
-            for(next = i + 1; next < TIMER_ID_NUM; next++, i++)
-            {
-                timerQueque[i] = timerQueque[next];
-            }
-
-            timerQueque[next].id = TIMER_ID_NONE;
+            found = TRUE;
+            break;
         }
     }
+
+    // 3, move the element
+    if(found)   // we found the right position
+    {
+        for(next = i + 1; next < TIMER_ID_NUM; next++, i++)
+        {
+            if(TIMER_ID_NONE != timerQueque[next].id)
+                timerQueque[i] = timerQueque[next];
+            else
+                break;
+        }
+
+        timerQueque[i].id = TIMER_ID_NONE;
+    }
+    else
+    {
+        // not found timer id in the timer queque.
+    }
+
 }
 
 void timerLoop(void)
 {
     uint8 i;
 
+    // find the valid timer id and then run its handle function
     for(i = 0; i < TIMER_ID_NUM; i++)
     {
         if(TIMER_ID_NONE != timerQueque[i].id)
         {
-            if(timerQueque[i].time < timerQueque[i].timeout)
+            if(timerQueque[i].count > 0)
             {
-                timerQueque[i].time++;
+                timerQueque[i].count--; // doesn't reach yet
             }
             else
             {
-                timerQueque[i].time = 0;
+                timerQueque[i].count = timerQueque[i].interval;
                 (timerQueque[i].handler)();
             }
+        }
+        else
+        {
+            // we reached the last valid timer's loop. jump out here
+            break;
         }
     }
 }

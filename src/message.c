@@ -25,94 +25,86 @@ void messageInit(void)
 void messageAdd(uint8 event, uint8 mdata, uint16 interval)
 {
 	uint8 i;
-    uint8 event_tmp;
 
-	// check input event is valid or not
+	// 1, check input event is valid or not
 	if(event >= EvtMax)
 	{
 		DBG_STR_DATA("add invalid event:", event);
 		return;
 	}
 
-    // check if this message already in the message queque.
+    // 2, check if this message is already in the message queque.
     for(i = 0; i < MSG_NUM; i++)
     {
-        event_tmp = msgQueque[i].event;
-        if(EVENT_EMPTY != event_tmp)
+        if(event == msgQueque[i].event)
         {
-            if(event_tmp == event)
-            {
-                msgQueque[i].msg = mdata;
-                msgQueque[i].interval = interval;
-                return;
-            }
-            else
-            {
-               //do nothing
-            }
-        }
-        else
-        {
-            // already reach the end of the this message.
-            // put this event into message queque.
-            msgQueque[i].event = event;
             msgQueque[i].msg = mdata;
             msgQueque[i].interval = interval;
             return;
         }
     }
 
+    // 3, add this new event into the message queque.
+    for(; i < MSG_NUM; i++)
+    {
+        if(EVENT_EMPTY == msgQueque[i].event)
+        {
+            msgQueque[i].event = event;
+            msgQueque[i].msg = mdata;
+            msgQueque[i].interval = interval;
+            return;
+        }
+    }
+    
     //message queque is full
 	osWarning(ERR_MSG_FULL);
 }
 /*
 *	This will Clear all the same event in the message queque.
 */
-void messageCancel(uint8 event)
+void messageCancel(const uint8 event)
 {
-	uint8 i, index_end;	
-    uint8 event_tmp;
-    
-	// check the message is valid or not
+	uint8 i, next;	
+    uint8 found = FALSE;
+  
+	// 1, check the inpput parameters
 	if(event >= EvtMax)
 	{
 		DBG_STR_DATA("cancel invalid event:", event);
 		return;
 	}
 
-    for(index_end = 0, i = 0; i < MSG_NUM; i++)
-    {
-        if(EVENT_EMPTY == msgQueque[i].event)
-            break;
-        else
-            index_end++;
-    }
-    
+    // 2, find the specific position 
     for(i = 0; i < MSG_NUM; i++)
     {
-        event_tmp = msgQueque[i].event;
-        if(EVENT_EMPTY != event_tmp)
+        if(event == msgQueque[i].event)
         {
-            if(event_tmp == event)  // find the message which we want to cancel.
-            {
-                for(; i < index_end; i++)
-                {
-                    msgQueque[i] = msgQueque[i + 1];
-                    break;
-                }
-
-                msgQueque[index_end].event = EVENT_EMPTY;
-                return;
-            }
-        }
-        else
-        {
-            // already reach the end of message queque.
+            found = TRUE;
             break;
-        }        
+        }
     }
 
-	//Run Here, this message you want to cancel is not the message queque. do nothing
+    // 3, realign the message queue
+    if(found)
+    {
+        for(next = i + 1; next < MSG_NUM; next++, i++)
+        {
+            if(EVENT_EMPTY != msgQueque[i].event)
+            {
+                msgQueque[i] = msgQueque[next];
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        msgQueque[i].event = EVENT_EMPTY;
+    }
+    else
+    {
+	    //Run Here, this message you want to cancel is not the message queque. do nothing
+    }
 }
 
 /*
@@ -122,63 +114,54 @@ void messageCancel(uint8 event)
 
 void messageLoop(void)
 {
-	uint8 i, index_end;
-    uint8 event_tmp;
+	uint8 i, next;
+    uint8 found = FALSE;
 	uint8 needApply = FALSE;
 
-    if(gProject.timerMsgTick < MSG_TICK_MS)
-        return;
+    // 1, if the message tick get ready, update the all the interval
+    if(gProject.timerMsgTick >= MSG_TICK_MS)
+    {
+        gProject.timerMsgTick = 0;
 
-    gProject.timerMsgTick = 0;
+        for(i = 0; i < MSG_NUM; i++)
+        {
+            if(EVENT_EMPTY == msgQueque[i].event)
+                break;
 
+            if(msgQueque[i].interval > 0)
+                msgQueque[i].interval --;
+        }
+    }
+
+    // 2, find which message is timeout
     for(i = 0; i < MSG_NUM; i++)
     {
-        if(msgQueque[i].interval > 0)
-            msgQueque[i].interval--;
+        if(EVENT_EMPTY != msgQueque[i].event)
+            break;
 
         if(0 == msgQueque[i].interval)
-           needApply = TRUE;
-    }
-
-    if(FALSE == needApply)
-        return;
-
-    for(index_end = 0, i = 0; i < MSG_NUM; i++)
-    {
-        if(EVENT_EMPTY == msgQueque[i].event)
+        {
+            found = TRUE;
             break;
-        else
-            index_end++;
+        }
     }
-    
-    for(i = 0; i < MSG_NUM; i++)
+
+    // 3, we found one message is ready,
+    if(found)
     {
-        event_tmp = msgQueque[i].event;
-        
-        if(EVENT_EMPTY != event_tmp)
-        {
-            if(0 == msgQueque[i].interval)
-            {
-               message_type msg;
-               msg = msgQueque[i];
-               //
-               for(; i < index_end; i++)
-               {
-                   msgQueque[i] = msgQueque[i + 1];
-                   break;
-               }
+        message_type msg = msgQueque[i];
 
-               msgQueque[index_end].event = EVENT_EMPTY;
-
-               osMessageHandler(&msg);
-               return;
-            }
-        }
-        else
+        for(next = i + 1; next < MSG_NUM; next++, i++)
         {
-            // already reach the end of message queque.
-            return;
+            if(EVENT_EMPTY != msgQueque[i].event)
+                msgQueque[i] = msgQueque[next];
+            else
+                break;
         }
+
+        msgQueque[i].event = EVENT_EMPTY;
+
+        osMessageHandler(&msg);
     }
 }
 
