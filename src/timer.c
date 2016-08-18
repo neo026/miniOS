@@ -39,15 +39,25 @@ void timerCreate(timer_id_type id, uint8 interval, timerHandler handler)
     // 2,check if this timer ID is already in the timer queque
     for(i = 0; i < TIMER_ID_NUM; i++)
     {
-        if(id == timerQueque[i].id)
+    	if(TIMER_ID_NONE == timerQueque[i].id)
+    	{
+	        if(id == timerQueque[i].id)
+	        {
+	            DBG_STR_DATA("timerCreate: already is created:", id);
+	            timerQueque[i].count = 0;
+	            timerQueque[i].interval = interval;
+	            timerQueque[i].handler = handler;
+	            return ;
+	        }
+        }
+        else
         {
-            DBG_STR_DATA("timerCreate: already is created:", id);
-            return ;
+			break;
         }
     }
 
     // 3, find the empty position and fill in it    
-    for(i = 0; i < TIMER_ID_NUM; i++)
+    for(; i < TIMER_ID_NUM; i++)
     {
         if(TIMER_ID_NONE == timerQueque[i].id)
         {
@@ -71,6 +81,7 @@ void timerDelete(const timer_id_type id)
     if(id >= TimerMax)
     {
         DBG_STR_DATA("timerDelete: id is fault:" id);
+        return;
     }
 
     // 2, find the specific position

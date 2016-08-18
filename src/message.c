@@ -36,11 +36,19 @@ void messageAdd(uint8 event, uint8 mdata, uint16 interval)
     // 2, check if this message is already in the message queque.
     for(i = 0; i < MSG_NUM; i++)
     {
-        if(event == msgQueque[i].event)
-        {
-            msgQueque[i].msg = mdata;
-            msgQueque[i].interval = interval;
-            return;
+    	if(EVENT_EMPTY != msgQueque[i].event)
+    	{
+			if(event == msgQueque[i].event)
+			{
+				msgQueque[i].msg = mdata;
+				msgQueque[i].interval = interval;
+				return;
+			}
+
+    	}
+    	else
+    	{
+        	break;
         }
     }
 
