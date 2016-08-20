@@ -4,7 +4,7 @@
 #include "message.h"
 
 #define MSG_NUM		6
-static message_type msgQueque[MSG_NUM];	// message queque, this is a header of single link chain
+static message_type msgQueue[MSG_NUM];	// message Queue, this is a header of single link chain
 
 //
 void messageInit(void)
@@ -12,12 +12,12 @@ void messageInit(void)
     uint8 i;
 
     for(i = 0; i < MSG_NUM; i++)
-        msgQueque[i].event = EVENT_EMPTY;
+        msgQueue[i].event = EVENT_EMPTY;
 }
 
 /*
-	brief: add a new message to the msgQueque arrary,
-		if your input message is already put into the msgQueque, instead of it
+	brief: add a new message to the msgQueue arrary,
+		if your input message is already put into the msgQueue, instead of it
 		if you find an empty array position, that is the right position, fill it
 			
 	delay time = delay * 1ms
@@ -33,15 +33,15 @@ void messageAdd(uint8 event, uint8 mdata, uint16 interval)
 		return;
 	}
 
-    // 2, check if this message is already in the message queque.
+    // 2, check if this message is already in the message Queue.
     for(i = 0; i < MSG_NUM; i++)
     {
-    	if(EVENT_EMPTY != msgQueque[i].event)
+    	if(EVENT_EMPTY != msgQueue[i].event)
     	{
-			if(event == msgQueque[i].event)
+			if(event == msgQueue[i].event)
 			{
-				msgQueque[i].msg = mdata;
-				msgQueque[i].interval = interval;
+				msgQueue[i].msg = mdata;
+				msgQueue[i].interval = interval;
 				return;
 			}
 
@@ -52,23 +52,23 @@ void messageAdd(uint8 event, uint8 mdata, uint16 interval)
         }
     }
 
-    // 3, add this new event into the message queque.
+    // 3, add this new event into the message Queue.
     for(; i < MSG_NUM; i++)
     {
-        if(EVENT_EMPTY == msgQueque[i].event)
+        if(EVENT_EMPTY == msgQueue[i].event)
         {
-            msgQueque[i].event = event;
-            msgQueque[i].msg = mdata;
-            msgQueque[i].interval = interval;
+            msgQueue[i].event = event;
+            msgQueue[i].msg = mdata;
+            msgQueue[i].interval = interval;
             return;
         }
     }
     
-    //message queque is full
+    //message Queue is full
 	osWarning(ERR_MSG_FULL);
 }
 /*
-*	This will Clear all the same event in the message queque.
+*	This will Clear all the same event in the message Queue.
 */
 void messageCancel(const uint8 event)
 {
@@ -85,7 +85,7 @@ void messageCancel(const uint8 event)
     // 2, find the specific position 
     for(i = 0; i < MSG_NUM; i++)
     {
-        if(event == msgQueque[i].event)
+        if(event == msgQueue[i].event)
         {
             found = TRUE;
             break;
@@ -97,9 +97,9 @@ void messageCancel(const uint8 event)
     {
         for(next = i + 1; next < MSG_NUM; next++, i++)
         {
-            if(EVENT_EMPTY != msgQueque[i].event)
+            if(EVENT_EMPTY != msgQueue[i].event)
             {
-                msgQueque[i] = msgQueque[next];
+                msgQueue[i] = msgQueue[next];
             }
             else
             {
@@ -107,11 +107,11 @@ void messageCancel(const uint8 event)
             }
         }
 
-        msgQueque[i].event = EVENT_EMPTY;
+        msgQueue[i].event = EVENT_EMPTY;
     }
     else
     {
-	    //Run Here, this message you want to cancel is not the message queque. do nothing
+	    //Run Here, this message you want to cancel is not the message Queue. do nothing
     }
 }
 
@@ -133,21 +133,21 @@ void messageLoop(void)
 
         for(i = 0; i < MSG_NUM; i++)
         {
-            if(EVENT_EMPTY == msgQueque[i].event)
+            if(EVENT_EMPTY == msgQueue[i].event)
                 break;
 
-            if(msgQueque[i].interval > 0)
-                msgQueque[i].interval --;
+            if(msgQueue[i].interval > 0)
+                msgQueue[i].interval --;
         }
     }
 
     // 2, find which message is timeout
     for(i = 0; i < MSG_NUM; i++)
     {
-        if(EVENT_EMPTY != msgQueque[i].event)
+        if(EVENT_EMPTY != msgQueue[i].event)
             break;
 
-        if(0 == msgQueque[i].interval)
+        if(0 == msgQueue[i].interval)
         {
             found = TRUE;
             break;
@@ -157,17 +157,17 @@ void messageLoop(void)
     // 3, we found one message is ready,
     if(found)
     {
-        message_type msg = msgQueque[i];
+        message_type msg = msgQueue[i];
 
         for(next = i + 1; next < MSG_NUM; next++, i++)
         {
-            if(EVENT_EMPTY != msgQueque[i].event)
-                msgQueque[i] = msgQueque[next];
+            if(EVENT_EMPTY != msgQueue[i].event)
+                msgQueue[i] = msgQueue[next];
             else
                 break;
         }
 
-        msgQueque[i].event = EVENT_EMPTY;
+        msgQueue[i].event = EVENT_EMPTY;
 
         osMessageHandler(&msg);
     }

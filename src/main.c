@@ -47,14 +47,14 @@ typedef enum
 #define LOOP_ID_NONE	(LoopMax)
 #define LOOP_ID_NUM		(LoopMax)
 
-while_loop_type LoopQueque[LOOP_ID_NUM];
+while_loop_type LoopQueue[LOOP_ID_NUM];
 
 void loopInit(void)
 {
 	uint8 i;
 
 	for(i = 0; i < LOOP_ID_NUM; i++)
-		LoopQueque[i].id = LOOP_ID_NONE;
+		LoopQueue[i].id = LOOP_ID_NONE;
 }
 
 void loopAdd(loop_id_type id, whileLoopHandler *handler)
@@ -68,15 +68,15 @@ void loopAdd(loop_id_type id, whileLoopHandler *handler)
 	if(NULL == handler)
 		return;
 
-	// check if this loopId is already in your queque
+	// check if this loopId is already in your Queue
 	for(i = 0; i < LOOP_ID_NUM; i++)
 	{
-		if(LOOP_ID_NONE != LoopQueque[i].id)
+		if(LOOP_ID_NONE != LoopQueue[i].id)
 		{
-			if(id == LoopQueque[i].id)
+			if(id == LoopQueue[i].id)
 			{
-				//already in the loop queque.
-				LoopQueque[i].handler = handler;
+				//already in the loop Queue.
+				LoopQueue[i].handler = handler;
 				return;
 			}
 		}
@@ -86,18 +86,18 @@ void loopAdd(loop_id_type id, whileLoopHandler *handler)
 		}
 	}
 
-	// if it does not in the loop queque
+	// if it does not in the loop Queue
 	for(; i < LOOP_ID_NUM; i++)
 	{
-		if(LOOP_ID_NONE == LoopQueque[i].id)
+		if(LOOP_ID_NONE == LoopQueue[i].id)
 		{
-			LoopQueque[i].id = id;
-			LoopQueque[i].handler = handler;
+			LoopQueue[i].id = id;
+			LoopQueue[i].handler = handler;
 			return;
 		}
 	}
 
-	// if it runs here, that means LoopQueque is FULL.
+	// if it runs here, that means LoopQueue is FULL.
 	
 }
 
@@ -111,7 +111,7 @@ void loopDelete(loop_id_type id)
 
 	for(i = 0; i < LOOP_ID_NUM; i++)
 	{
-		if(id == LoopQueque[i].id)
+		if(id == LoopQueue[i].id)
 		{
 			found = TRUE;
 			break;
@@ -122,13 +122,13 @@ void loopDelete(loop_id_type id)
 	{
 		for(next = i + 1; next < LOOP_ID_NUM; next++, i++)
 		{
-			if(LOOP_ID_NONE != LoopQueque[next].id)
-				LoopQueque[i] = LoopQueque[next];
+			if(LOOP_ID_NONE != LoopQueue[next].id)
+				LoopQueue[i] = LoopQueue[next];
 			else
 				break;
 		}
 
-		LoopQueque[i].id = LOOP_ID_NONE;
+		LoopQueue[i].id = LOOP_ID_NONE;
 	}
 
 	// if it runs here, it means that we didn't find the response LOOP ID.
@@ -140,9 +140,9 @@ void loopLoop(void)
 
 	for(i = 0; i < LOOP_ID_NUM; i++)
 	{
-		if(LOOP_ID_NONE != LoopQueque[i].id)
+		if(LOOP_ID_NONE != LoopQueue[i].id)
 		{
-			(LoopQueque[i].handler)();
+			(LoopQueue[i].handler)();
 		}
 	}
 	
