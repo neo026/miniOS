@@ -18,10 +18,10 @@ typedef enum
 	LoopDebugRx,
 	/*add new loop ID here*/
 	
-	LoopMax,
+	LoopNumMax,
 }loop_id_type;
 
-#define LOOP_ID_NONE	(LoopMax)
+#define LOOP_ID_NONE	(LoopNumMax)
 #define LOOP_ID_NUM		(LoopMax)
 
 void osLoopInit(void);
@@ -37,7 +37,7 @@ typedef enum
     TimerPowerManage,
     TimerAux,
  
-    TimerMax,   // do not modify it, it should be at the last, it means the number of TIMER_ID, and the empty TIMER_ID.
+    TimerNumMax,   // do not modify it, it should be at the last, it means the number of TIMER_ID, and the empty TIMER_ID.
 }timer_id_type;
 
 #define TIMER_ID_NONE       (TimerMax)
@@ -81,6 +81,12 @@ typedef struct
 
 //this defines is for the interval time of messageSend().
 #define T_SEC(x)	(uint16)(x*1000)	// this input time range is 0~65535 ms
+
+/* */
+#define ERR_OK      0x00
+#define ERR_PARAM   0x01
+#define ERR_FULL    0x02
+#define ERR_ESIXT   0x03
 
 void osMessageSend(event_id_type event, uint8 mdata, uint16 interval);
 void osMessageCancel(const event_id_type event);

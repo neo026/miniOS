@@ -2,7 +2,7 @@
 #include "os_core.h"
 
 
-static loop_type LoopQueue[LOOP_ID_NUM];
+static loop_type LoopQueue[LoopNumMax];
 
 static void osLoopInit(void)
 {
@@ -10,6 +10,94 @@ static void osLoopInit(void)
 
 	for(i = 0; i < LOOP_ID_NUM; i++)
 		LoopQueue[i].id = LOOP_ID_NONE;
+}
+
+/*
+*
+*/
+uint8 OS_CreateLoop(loop_id_type id, loopHandler *handler)
+{
+    uint8 i;
+    loop_type* pLoop;
+
+    /* check input paramters */
+    if ((id >= LoopNumMax) || (NULL == handler))
+    {
+        return ERR_PARAM;
+    }
+
+    /* check if this LoopID is already in your LoopQueue */
+    for (i = 0; i < LoopNumMax; i++)
+    {
+        pLoop = LoopQueue + i;
+        if (LOOP_ID_NONE == pLoop->id)
+        {
+            /* end of the loopQueue, put it*/
+            pLoop->id = id;
+            pLoop->handler = handler;
+            return ERR_OK;
+        }
+        else
+        {
+            if (id == pLoop->id)
+            {
+                /* the loop you want to create is created before*/
+                return ERR_ESIXT;
+            }
+        }
+    }
+
+    /* Loop queue is already full */
+    return ERR_FULL;
+}
+
+/*
+*
+*/
+void OS_DestroyLoop(loop_id_type id)
+{
+ 	uint8 i, next;
+	bool is_found = FALSE;
+	loop_type *pLoop;
+
+    /* check the input parameters */
+    if (id >= LoopNumMax)
+    {
+        return;
+    }
+
+    /* search the loop which you want to destory */
+    for (i = 0; i < LoopNumMax; i++)
+    {
+        pLoop = LoopQueue + i;
+        if (id == pLoop->id)
+        {
+            /* found it, jump out*/
+            is_found = TRUE;
+            break;
+        }
+    }
+
+    /* check if we found the loop */
+    if (is_found)
+    {
+        for (next = i + 1; next < LoopNumMax; next++, i++)
+        {       
+            if (LOOP_ID_NONE == LoopQueue[next].id)
+            {
+                /*end of the loopQueue, jump out */
+                LoopQueue[i].id = LOOP_ID_NONE;
+                break;
+            }
+            else
+            {
+                /* move the next to previous */
+                LoopQueue[i] = LoopQueue[next];
+            }
+        }
+    }
+
+    /* or this loop isn't in the loopQueue*/
 }
 
 void osLoopCreate(loop_id_type id, loopHandler *handler)
@@ -89,6 +177,26 @@ void osLoopDelete(loop_id_type id)
 	// if it runs here, it means that we didn't find the response LOOP ID.
 }
 
+/*
+*
+*/
+static void OS_Loop(void)
+{
+    uint8 i;
+    loop_type* pLoop;
+
+    /* loop the loopQueue*/
+    for (i = 0; i < LoopNumMax; i++)
+    {
+        pLoop = LoopQueue + i;
+        if (LOOP_ID_NONE != pLoop->id)
+        {
+            /* execute this loop function */
+            pLoop->handler();
+        }
+    }
+}
+
 static void osLoop(void)
 {
 	uint8 i;
@@ -104,14 +212,58 @@ static void osLoop(void)
 }
 
 //
-static timer_type timerQueue[TIMER_ID_NUM];
+static timer_type timerQueue[TimerNumMax];
 
 static void osTimerInit(void)
 {
     uint8 i;
     
-    for(i = 0; i < TIMER_ID_NUM; i++)
+    for (i = 0; i < TIMER_ID_NUM; i++)
         timerQueue[i].id = TIMER_ID_NONE;
+}
+
+/*
+*
+*/
+uint8 OS_CreateTimer(timer_id_type id, uint8 interval, timerHandler handler)
+{
+    uint8 i;
+    timer_type* pTimer;
+
+    /* check the input parameters*/
+    if ((id > TimerNumMax) || (NULL == handler))
+    {
+        return ERR_PARAM;
+    }
+
+    /* check if the timer is already in the timerQueue */
+    for ( i = 0; i < TimerNumMax; i++)
+    {
+        pTimer = timerQueue + i;
+        if (TIMER_ID_NONE == pTimer->id)
+        {
+            pTimer->id = id;
+            pTimer->count = interval;   /* the count of timer will decrease */
+            pTimer->interval = interval;
+            pTimer->handler = handler;
+            return ERR_OK;
+        }
+        else
+        {
+            if (id == pTimer->id)
+            {
+                /* this timer is already in the timerQueue,
+                   but we don't return ERR_ESIXT, we update the timer
+                */
+                pTimer->count = interval; /* the count of timer will decrease */
+                pTimer->interval = interval;
+                pTimer->handler = handler;
+            }
+        }
+    }
+
+    /* timerQueue is full */
+    return ERR_FULL;
 }
 
 /*
@@ -170,6 +322,52 @@ void osTimerCreate(timer_id_type id, uint8 interval, timerHandler handler)
     DBG_STR_DATA("timerCreate: Queue is full:", id);
 }
 
+void OS_DestoryTimer(timer_id_type id)
+{
+    uint8 i, next;
+    timer_type *pTimer;
+    bool is_found = FALSE;
+
+    /* check the input parameters */
+    if (id >= TimerNumMax)
+    {
+        return;
+    }
+
+    /* search the timer that you want to destroy*/
+    for (i = 0; i < TimerNumMax; i++)
+    {
+        pTimer = timerQueue + i;
+        if (id == pTimer->id)
+        {
+            /* found it*/
+            is_found = TRUE;
+            break;
+        }
+    }
+
+    /* check if we have found the timer */
+    if (is_found)
+    {
+        for (next = i + 1; next < TimerNumMax; next++, i++)
+        {       
+            if (TIMER_ID_NONE == timerQueue[next].id)
+            {
+                /*end of the timerQueue, jump out */
+                timerQueue[i].id = TIMER_ID_NONE;
+                break;
+            }
+            else
+            {
+                /* move the next to previous */
+                timerQueue[i] = timerQueue[next];
+            }
+        }
+    }
+
+    /* this timer isn't in the timerQueue */
+}
+
 void osTimerDelete(const timer_id_type id)
 {
     uint8 i, next;
@@ -212,6 +410,36 @@ void osTimerDelete(const timer_id_type id)
 
 }
 
+static void OS_LoopTimer(void)
+{
+    uint8 i;
+    timer_type* pTimer;
+    
+    /* loop the timer functions */
+    for (i = 0; i < TimerNumMax; i++)
+    {
+        pTimer = timerQueue + i;
+        if (TIMER_ID_NONE == pTimer->id)
+        {
+            /* end of the timerQueue, do nothing */
+        }
+        else
+        {
+            if(pTimer->count > 0)
+            {
+                /* decrease the timer count */
+                pTimer->count--;
+            }
+            else
+            {
+                /* timeout, handle the function, new loop*/
+                pTimer->handler();
+                pTimer->count = pTimer->interval;
+            }
+        }
+    }
+}
+
 static void osTimerLoop(void)
 {
     uint8 i;
@@ -239,7 +467,9 @@ static void osTimerLoop(void)
     }
 }
 
-static message_type msgQueue[MSG_NUM];	// message Queue, this is a header of single link chain
+// message Queue, this is a header of single link chain
+
+static message_type msgQueue[MSG_NUM];
 //
 static void osMessageInit(void)
 {
@@ -256,6 +486,48 @@ static void osMessageInit(void)
 			
 	delay time = delay * 1ms
 */
+
+uint8 OS_SendMessage(event_type event, uint8 mdata, uint16 interval)
+{
+    uint8 i;
+    message_type* pMsg;
+
+    /* check the input parameters */
+    if (event >= EvtNumMax)
+    {
+        return ERR_PARAM;
+    }
+
+    /* check if this message is already in the messageQueue */
+    for (i = 0; i < MSG_NUM; i++)
+    {
+        pMsg = msgQueue + i;
+        if (EVENT_EMPTY == pMsg->event)
+        {
+            /* end of this queue, put message here*/
+            pMsg->event = event;
+            pMsg->msg = mdata;
+            pMsg->interval = interval;
+            return ERR_OK;
+        }
+        else
+        {
+            if (event == pMsg->event)
+            {
+                /* this message is esixt, but we don't send ERR_ESIXT,
+                   just overite it
+                */
+                pMsg->msg = mdata;
+                pMsg->interval = interval;
+                return ERR_OK;
+            }
+        }
+    }
+
+    /* msgQueue is full */
+    return ERR_FULL;
+}
+
 void osMessageSend(event_id_type event, uint8 mdata, uint16 interval)
 {
 	uint8 i;
@@ -304,6 +576,50 @@ void osMessageSend(event_id_type event, uint8 mdata, uint16 interval)
 /*
 *	This will Clear all the same event in the message Queue.
 */
+void OS_CancelMessage(event_type event)
+{
+    uint8 i, next;
+    bool is_found;
+    message_type* pMsg;
+    
+    /* check the input parameters */
+    if (event >= EvtNumMax)
+    {
+        return;
+    }
+
+    /* search this message that you want to cancel in message queue */
+    for (i = 0; i < MSG_NUM; i++)
+    {
+        pMsg = msgQueue + i;
+        if (event == pMsg->event)
+        {
+            /* found it*/
+            is_found = TRUE;
+            break;
+        }
+    }
+
+    /* check if we have found the message */
+    if (is_found)
+    {
+        for(next = i + 1; next < MSG_NUM; next++, i++)
+        {
+            if(EVENT_EMPTY == msgQueue[i].event)
+            {
+                msgQueue[i].event = EVENT_EMPTY;
+                break;
+            }
+            else
+            {
+                msgQueue[i] = msgQueue[next];
+            }
+        }
+    }
+
+    /* this message isn't in the msgQueue */
+}
+
 void osMessageCancel(const event_id_type event)
 {
 	uint8 i, next;	
@@ -353,6 +669,11 @@ void osMessageCancel(const event_id_type event)
 	Find the timeout message or the conndition = TRUE message, this function is put into the main() while(1).
 	if find out, apply its handler, otherwise find next timeout or condition message.
 */
+
+static void OS_LoopMessage(void)
+{
+    
+}
 
 static void osMessageLoop(void)
 {

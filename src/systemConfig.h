@@ -114,7 +114,7 @@ typedef enum
     EvtFactoryReset,
     EvtTest,
 
-    EvtMax,
+    EvtNumMax,
 }event_id_type;
 
 #define EVENT_EMPTY         (EvtMax)
